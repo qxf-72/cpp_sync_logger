@@ -34,6 +34,7 @@ bool Logger::init(std::string& filename, LogLevel minLevel) {
 
 // 动态设置日志级别
 void Logger::setLevel(LogLevel level) {
+  std::lock_guard<std::mutex> lock(initMutex_);
   minLevel_ = level;
 }
 
