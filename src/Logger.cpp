@@ -14,7 +14,6 @@ Logger& Logger::instance() {
 }
 
 // 析构函数中调用 stop()
-// 目的是保证程序退出时，后台日志线程能够正常结束，剩余日志能够写入文件
 Logger::~Logger() {
   stop();
 }
@@ -24,6 +23,7 @@ Logger::~Logger() {
 // minLevel: 最低输出日志级别
 bool Logger::init(std::string& filename, LogLevel minLevel) {
   std::lock_guard<std::mutex> lock(initMutex_);
+  minLevel_ = minLevel;
   out_.open(filename, std::ios::out | std::ios::app);
   if (!out_.is_open()) {
     std::cerr << "Failed to open log file: " << filename << std::endl;
@@ -39,7 +39,6 @@ void Logger::setLevel(LogLevel level) {
 }
 
 // 写日志接口
-// 业务线程调用 LOG_INFO / LOG_WARN 等宏后，最终会进入这个函数
 void Logger::log(LogLevel level, const char* file, int line, const std::string& message) {
   if (level < minLevel_) {
     return;
@@ -96,7 +95,6 @@ std::string Logger::levelToString(LogLevel level) const {
 }
 
 // 获取当前时间字符串
-// 格式示例：2026-05-25 12:00:00.123
 std::string Logger::currentTime() const {
   auto now = std::chrono::system_clock::now();
   auto time = std::chrono::system_clock::to_time_t(now);
