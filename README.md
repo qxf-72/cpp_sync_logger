@@ -1,5 +1,8 @@
 # cpp_sync_logger
 
+![GitHub License](https://img.shields.io/github/license/qxf-72/cpp_sync_logger)
+![GitHub top language](https://img.shields.io/github/languages/top/qxf-72/cpp_sync_logger)
+
 一个基于 C++11 实现的轻量级同步日志库。
 
 本项目用于学习和实践 C++ 工程化开发中的日志系统设计，支持日志级别过滤、时间戳、线程 ID、源码文件名与行号输出，并通过互斥锁保证多线程环境下日志写入的线程安全。
