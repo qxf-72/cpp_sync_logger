@@ -11,25 +11,26 @@ enum class LogLevel { DEBUG = 0, INFO, WARN, ERROR, FATAL };
 class Logger {
  public:
   static Logger& instance();
-  bool init(std::string& filename, LogLevel minLevel = LogLevel::DEBUG);
+  bool init(const std::string& filename, LogLevel level = LogLevel::DEBUG);
   void setLevel(LogLevel level);
   void log(LogLevel level, const char* file, int line, const std::string& message);
   void stop();
+
   Logger(const Logger&) = delete;
   Logger& operator=(const Logger&) = delete;
 
  private:
   Logger() = default;
   ~Logger();
-  std::string formatMessage(LogLevel level, const char* file, int line, const std::string& message);
 
-  std::string levelToString(LogLevel level) const;
-  std::string currentTime() const;
+  std::string formatMessage(LogLevel level, const char* file, int line, const std::string& message);
+  std::string levelToString(LogLevel level);
+  std::string currentTime();
 
  private:
   std::ofstream out_;
-  std::mutex initMutex_;
-  LogLevel minLevel_;
+  std::mutex mtx_;
+  LogLevel minLogLevel{LogLevel::DEBUG};
 };
 
 #define LOG_DEBUG(msg) Logger::instance().log(LogLevel::DEBUG, __FILE__, __LINE__, (msg))
