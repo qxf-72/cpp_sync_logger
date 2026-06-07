@@ -40,24 +40,24 @@ void Logger::setLevel(LogLevel level) {
 
 // 写日志接口
 void Logger::log(LogLevel level, const char* file, int line, const std::string& message) {
+  std::lock_guard<std::mutex> lock(initMutex_);
   if (level < minLevel_) {
     return;
   }
   std::string formatted = formatMessage(level, file, line, message);
-  {
-    std::lock_guard<std::mutex> lock(initMutex_);
-    if (out_.is_open()) {
-      out_ << formatted << std::endl;
-    } else {
-      std::cerr << "Log file is not open. Message: " << formatted << std::endl;
-    }
+
+  if (out_.is_open()) {
+    out_ << formatted << '\n';
+  } else {
+    std::cerr << "Log file is not open. Message: " << formatted << std::endl;
   }
 }
 
-// 停止日志系统
+// 关闭日志文件
 void Logger::stop() {
   std::lock_guard<std::mutex> lock(initMutex_);
   if (out_.is_open()) {
+    out_.flush();
     out_.close();
   }
 }
