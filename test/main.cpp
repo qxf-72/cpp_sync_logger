@@ -6,29 +6,30 @@
 #include "Logger.h"
 
 int main() {
-  std::string filename = "test.log";
-  if (!Logger::instance().init(filename)) {
+  // 输出到控制台
+  Logger::instance().setLevel(LogLevel::DEBUG);
+  Logger::instance().setConsoleOutput(true);
+  LOG_DEBUG("this is a debug message.");
+  LOG_INFO("this is an info message.");
+  LOG_WARN("this is a warning message.");
+  LOG_ERROR("this is an error message.");
+  LOG_FATAL("this is a fatal message.");
+
+  // 输出到文件
+  if (!Logger::instance().init("test.log")) {
     return -1;
   }
-
-  Logger::instance().setLevel(LogLevel::DEBUG);
-
-  LOG_INFO("Logger initialized successfully.");
-  LOG_DEBUG("This is a debug message.");
-  LOG_WARN("This is a warning message.");
-  LOG_ERROR("This is an error message.");
-  LOG_FATAL("This is a fatal message.");
-
+  Logger::instance().setConsoleOutput(false);
   std::vector<std::thread> threads;
   for (int i = 0; i < 5; ++i) {
     threads.emplace_back([i]() {
-      for (int j = 0; j < 10; ++j) {
-        LOG_DEBUG("Thread " + std::to_string(i) + " logging message " + std::to_string(j));
+      for (int j = 0; j < 5; ++j) {
+        LOG_INFO("Thread " + std::to_string(i) + " logging message " + std::to_string(j));
       }
     });
   }
-  for (auto& t : threads) {
-    t.join();
+  for (auto& thread : threads) {
+    thread.join();
   }
 
   return 0;

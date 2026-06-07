@@ -13,49 +13,67 @@ Logger& Logger::instance() {
   return instance;
 }
 
-// 析构函数中调用 stop()
+// 析构函数关闭文件
+// 这里不必加锁，因为closeFile中加了锁
 Logger::~Logger() {
-  stop();
+  closeFile();
 }
 
 // 初始化日志系统
 // filename: 日志文件名
 // minLevel: 最低输出日志级别
-bool Logger::init(std::string& filename, LogLevel minLevel) {
-  std::lock_guard<std::mutex> lock(initMutex_);
-  minLevel_ = minLevel;
+bool Logger::init(const std::string& filename, LogLevel level) {
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  if (out_.is_open()) {
+    out_.close();
+  }
+  out_.flush();
+  out_.clear();
   out_.open(filename, std::ios::out | std::ios::app);
   if (!out_.is_open()) {
-    std::cerr << "Failed to open log file: " << filename << std::endl;
+    std::cerr << "Fail to open log file: " << filename << std::endl;
     return false;
   }
+
+  minLogLevel_ = level;
   return true;
 }
 
 // 动态设置日志级别
 void Logger::setLevel(LogLevel level) {
-  std::lock_guard<std::mutex> lock(initMutex_);
-  minLevel_ = level;
+  std::lock_guard<std::mutex> lock(mtx_);
+  minLogLevel_ = level;
+}
+
+// 动态设置是否输出到控制台
+void Logger::setConsoleOutput(bool enabled) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  consoleOutput_ = enabled;
 }
 
 // 写日志接口
 void Logger::log(LogLevel level, const char* file, int line, const std::string& message) {
-  std::lock_guard<std::mutex> lock(initMutex_);
-  if (level < minLevel_) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  if (level < minLogLevel_) {
     return;
   }
-  std::string formatted = formatMessage(level, file, line, message);
 
+  std::string formattedMessage = formatMessage(level, file, line, message);
+
+  // 输出到控制台
+  if (consoleOutput_) {
+    std::cout << formattedMessage << '\n';
+  }
+
+  // 输出到文件
   if (out_.is_open()) {
-    out_ << formatted << '\n';
-  } else {
-    std::cerr << "Log file is not open. Message: " << formatted << std::endl;
+    out_ << formattedMessage << '\n';
   }
 }
 
-// 关闭日志文件
-void Logger::stop() {
-  std::lock_guard<std::mutex> lock(initMutex_);
+void Logger::closeFile() {
+  std::lock_guard<std::mutex> lock(mtx_);
   if (out_.is_open()) {
     out_.flush();
     out_.close();
@@ -67,16 +85,13 @@ void Logger::stop() {
 std::string Logger::formatMessage(LogLevel level, const char* file, int line,
                                   const std::string& message) {
   std::ostringstream oss;
-
   oss << "[" << currentTime() << "]"
       << "[" << levelToString(level) << "]"
-      << "[tid:" << std::this_thread::get_id() << "]"
+      << "[" << std::this_thread::get_id() << "]"
       << "[" << file << ":" << line << "] " << message;
-
   return oss.str();
 }
 
-// 将日志级别枚举转换成字符串
 std::string Logger::levelToString(LogLevel level) const {
   switch (level) {
     case LogLevel::DEBUG:
@@ -94,22 +109,20 @@ std::string Logger::levelToString(LogLevel level) const {
   }
 }
 
-// 获取当前时间字符串
 std::string Logger::currentTime() const {
-  auto now = std::chrono::system_clock::now();
-  auto time = std::chrono::system_clock::to_time_t(now);
-  auto milliseconds =
-      std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()) % 1000;
-  std::tm tmTime{};
-  localtime_r(&time, &tmTime);
+  using namespace std::chrono;
 
-  // 格式化年月日时分秒
-  char buffer[32];
-  std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tmTime);
+  auto now = system_clock::now();
+  auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
 
-  // 拼接毫秒部分
+  std::time_t t = system_clock::to_time_t(now);
+
+  std::tm tm_time;
+  localtime_r(&t, &tm_time);
+
   std::ostringstream oss;
-  oss << buffer << "." << std::setw(3) << std::setfill('0') << milliseconds.count();
+  oss << std::put_time(&tm_time, "%Y-%m-%d %H:%M:%S") << "." << std::setfill('0') << std::setw(3)
+      << ms.count();
 
   return oss.str();
 }
