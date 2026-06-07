@@ -13,8 +13,9 @@ class Logger {
   static Logger& instance();
   bool init(const std::string& filename, LogLevel level = LogLevel::DEBUG);
   void setLevel(LogLevel level);
+  void setConsoleOutput(bool enabled);
   void log(LogLevel level, const char* file, int line, const std::string& message);
-  void stop();
+  void closeFile();
 
   Logger(const Logger&) = delete;
   Logger& operator=(const Logger&) = delete;
@@ -24,13 +25,14 @@ class Logger {
   ~Logger();
 
   std::string formatMessage(LogLevel level, const char* file, int line, const std::string& message);
-  std::string levelToString(LogLevel level);
-  std::string currentTime();
+  std::string levelToString(LogLevel level) const;
+  std::string currentTime() const;
 
  private:
   std::ofstream out_;
   std::mutex mtx_;
-  LogLevel minLogLevel{LogLevel::DEBUG};
+  LogLevel minLogLevel_{LogLevel::DEBUG};
+  bool consoleOutput_{true};
 };
 
 #define LOG_DEBUG(msg) Logger::instance().log(LogLevel::DEBUG, __FILE__, __LINE__, (msg))
